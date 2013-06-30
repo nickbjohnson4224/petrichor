@@ -7,27 +7,39 @@ return function()
 	local board, next_player, winner
 
 	-- initialize the model state
-	function self.init(rand)
+	function self.init()
 		board = {
 			N, N, N,
 			N, N, N,
 			N, N, N
 		}
 		next_player = X
+		winner = nil
 	end
 
 	-- import the state of the model
 	function self.load(state)
-		board = state.board
+		board = {}
+		for i, v in ipairs(state.board) do
+			board[i] = v
+		end
 		next_player = state.next_player
+		winner = state.winner
 	end
 
 	-- export the state of the model
 	function self.save()
-		return {
-			board = board,
-			next_player = next_player
-		}
+		local state = {}
+
+		state.board = {}
+		for i, v in ipairs(board) do
+			state.board[i] = v
+		end
+
+		state.next_player = next_player
+		state.winner = winner
+
+		return state
 	end
 
 	-- export a feature vector for a player
@@ -56,7 +68,7 @@ return function()
 	end
 
 	-- perform a move
-	function self.move(move, rand)
+	function self.move(move)
 
 		-- perform move
 		board[move] = next_player
@@ -64,6 +76,8 @@ return function()
 		-- determine if there is a winner
 		repeat
 			local col = (move - 1) % 3 + 1
+			local row = (move - col) / 3 + 1
+
 			if board[col+0] == next_player and
 				board[col+3] == next_player and
 				board[col+6] == next_player then
@@ -71,10 +85,9 @@ return function()
 				break
 			end
 
-			local row = (move - col) / 3
-			if board[row+0] == next_player and
-				board[row+1] == next_player and
-				board[row+2] == next_player then
+			if board[row*3+0] == next_player and
+				board[row*3+1] == next_player and
+				board[row*3+2] == next_player then
 				winner = next_player
 				break
 			end
@@ -117,11 +130,11 @@ return function()
 	-- list rewards for all players (if this is an end state)
 	function self.reward()
 		if winner == X then
-			return { 1, 0 }
+			return { [X]=1, [O]=0 }
 		elseif winner == O then
-			return { 0, 1 }
-		elseif self.moves() == {} then
-			return { 0.5, 0.5 }
+			return { [X]=0, [O]=1 }
+		elseif next(self.moves()) == nil then
+			return { [X]=0.5, [O]=0.5 }
 		else
 			return nil
 		end
@@ -141,8 +154,17 @@ return function()
 	-- produce human-readable representation of move
 	function self.display_move(move)
 		local col = (move - 1) % 3 + 1
-		local row = (move - 1) / 3 + 1
+		local row = (move - col) / 3 + 1
 		return string.format('(%d, %d)', col, row)
+	end
+
+	function self.move_display_position(move)
+		local col = (move - 1) % 3 + 1
+		local row = (move - col) / 3 + 1
+		return {
+			line = (row - 1) * 2 + 1,
+			char = (col - 1) * 2 + 1
+		}
 	end
 
 	return self
